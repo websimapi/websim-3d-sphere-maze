@@ -52,6 +52,7 @@ const trackDepth = 0.2;
 // Materials
 const ballMaterial = new CANNON.Material('ballMaterial');
 const trackMaterial = new CANNON.Material('trackMaterial');
+const sphereMaterial = new CANNON.Material('sphereMaterial');
 
 // Contact material (ball to track)
 const ballToTrack = new CANNON.ContactMaterial(
@@ -64,6 +65,17 @@ const ballToTrack = new CANNON.ContactMaterial(
 );
 world.addContactMaterial(ballToTrack);
 
+// Contact material (ball to outer sphere)
+const ballToSphere = new CANNON.ContactMaterial(
+    ballMaterial,
+    sphereMaterial,
+    {
+        friction: 0.0,
+        restitution: 0.7 // Bouncier for sphere collisions
+    }
+);
+world.addContactMaterial(ballToSphere);
+
 // Camera setup
 camera.position.set(0, 0, 15);
 camera.lookAt(0, 0, 0);
@@ -72,6 +84,52 @@ camera.lookAt(0, 0, 0);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enabled = false; // Disable for actual gameplay
+
+let outerSphereBody;
+
+function createOuterSphere() {
+    // Create the physics body for the containing sphere
+    outerSphereBody = new CANNON.Body({
+        mass: 0, // Static body
+        material: sphereMaterial,
+        type: CANNON.Body.STATIC
+    });
+    
+    // Add a sphere shape with a negative offset to create a hollow sphere
+    // We use a slightly smaller radius than the visual sphere to account for the ball's radius
+    const sphereShape = new CANNON.Sphere(sphereRadius);
+    
+    // We need to create a custom collision detection for the inside of the sphere
+    outerSphereBody.addEventListener('collide', function(e) {
+        // When the ball collides with the sphere, we push it back inside
+        if (e.body === ballBody) {
+            // Calculate the direction from sphere center to ball
+            const direction = new CANNON.Vec3().copy(ballBody.position);
+            const distance = direction.length();
+            
+            // Normalize direction vector
+            direction.normalize();
+            
+            // If ball is trying to go outside the sphere, apply force to keep it in
+            if (distance > sphereRadius - ballRadius - 0.1) {
+                // Apply impulse inward
+                const impulseStrength = Math.min(ballBody.velocity.length() * 0.5, 5);
+                const impulse = new CANNON.Vec3(
+                    -direction.x * impulseStrength,
+                    -direction.y * impulseStrength,
+                    -direction.z * impulseStrength
+                );
+                ballBody.applyImpulse(impulse, ballBody.position);
+            }
+        }
+    });
+    
+    // Add the shape with a phase that only detects collisions from inside
+    outerSphereBody.addShape(sphereShape);
+    
+    // Add to world
+    world.addBody(outerSphereBody);
+}
 
 function createMazeLevel(level) {
     // Remove existing maze if there is one
@@ -365,7 +423,7 @@ function createBall() {
         mass: 1,
         shape: new CANNON.Sphere(ballRadius),
         material: ballMaterial,
-        linearDamping: 0.3, // Add some damping to make the ball not roll forever
+        linearDamping: 0.3,
         angularDamping: 0.3
     });
     
@@ -478,10 +536,34 @@ function updateGame(time) {
         ball.position.copy(ballBody.position);
         ball.quaternion.copy(ballBody.quaternion);
         
-        // Check if ball has fallen off the maze
-        if (ballBody.position.y < -10) {
-            // Reset ball position
-            createBall();
+        // Check if ball is trying to go outside the outer sphere boundary
+        const ballDistanceFromCenter = new THREE.Vector3(
+            ballBody.position.x,
+            ballBody.position.y,
+            ballBody.position.z
+        ).length();
+        
+        if (ballDistanceFromCenter > sphereRadius - ballRadius) {
+            // Calculate direction from center to ball
+            const direction = new CANNON.Vec3(
+                ballBody.position.x,
+                ballBody.position.y,
+                ballBody.position.z
+            ).normalize();
+            
+            // Push ball back inside sphere
+            const penetration = ballDistanceFromCenter - (sphereRadius - ballRadius);
+            ballBody.position.x -= direction.x * penetration;
+            ballBody.position.y -= direction.y * penetration;
+            ballBody.position.z -= direction.z * penetration;
+            
+            // Reflect velocity for bounce effect
+            const normalVelocity = ballBody.velocity.dot(direction);
+            if (normalVelocity > 0) {
+                ballBody.velocity.x -= (1.5 * normalVelocity * direction.x);
+                ballBody.velocity.y -= (1.5 * normalVelocity * direction.y);
+                ballBody.velocity.z -= (1.5 * normalVelocity * direction.z);
+            }
         }
         
         // Check if ball reached the target
@@ -540,7 +622,7 @@ function onWindowResize() {
 
 // Initialize game
 function initGame() {
-    // Create the outer transparent sphere
+    // Create the outer transparent sphere (visual)
     const outerGeometry = new THREE.SphereGeometry(sphereRadius + 0.2, 32, 32);
     const outerMaterial = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
@@ -550,10 +632,13 @@ function initGame() {
         metalness: 0,
         clearcoat: 1.0,
         clearcoatRoughness: 0.1,
-        side: THREE.BackSide
+        side: THREE.DoubleSide // Change to DoubleSide to see from inside and outside
     });
     const outerSphere = new THREE.Mesh(outerGeometry, outerMaterial);
     scene.add(outerSphere);
+    
+    // Create the physics for the outer sphere
+    createOuterSphere();
     
     // Create the maze within the sphere
     createMazeLevel(currentLevel);
