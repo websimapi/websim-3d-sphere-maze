@@ -45,7 +45,7 @@ const sphereRadius = 5;
 let mazeMesh, mazeBody;
 let ball, ballBody;
 let targetMesh;
-const ballRadius = 0.3;
+const ballRadius = 0.2; // Smaller marble
 const trackWidth = 0.5;
 const trackDepth = 0.2;
 
@@ -413,7 +413,8 @@ function createBall() {
     const ballMat = new THREE.MeshStandardMaterial({
         color: 0x3080FF,
         metalness: 1.0,
-        roughness: 0.2
+        roughness: 0.1, // Smoother finish
+        envMapIntensity: 1.2 // More reflection
     });
     ball = new THREE.Mesh(ballGeometry, ballMat);
     scene.add(ball);
@@ -506,7 +507,7 @@ function handleOrientation(event) {
     y = Math.max(-45, Math.min(45, y));
     
     // Update world gravity based on device orientation
-    const gravityStrength = 12; // Adjust for desired sensitivity
+    const gravityStrength = 15; // Increased gravity for better physics feel
     world.gravity.set(
         y / 45 * gravityStrength,
         -9.8, // Always maintain some downward pull
@@ -622,20 +623,55 @@ function onWindowResize() {
 
 // Initialize game
 function initGame() {
+    // Create environment map for reflections
+    const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
+    const cubeCamera = new THREE.CubeCamera(0.1, 1000, cubeRenderTarget);
+    scene.add(cubeCamera);
+    
+    // Add a simple environment to reflect
+    const envGeometry = new THREE.SphereGeometry(30, 32, 32);
+    const envMaterial = new THREE.MeshBasicMaterial({
+        color: 0x0066aa, 
+        side: THREE.BackSide,
+        transparent: true,
+        opacity: 0.3
+    });
+    const envSphere = new THREE.Mesh(envGeometry, envMaterial);
+    scene.add(envSphere);
+    
+    // Update the cubemap once
+    cubeCamera.update(renderer, scene);
+    
     // Create the outer transparent sphere (visual)
-    const outerGeometry = new THREE.SphereGeometry(sphereRadius + 0.2, 32, 32);
+    const outerGeometry = new THREE.SphereGeometry(sphereRadius + 0.2, 64, 64);
     const outerMaterial = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
         transparent: true,
-        opacity: 0.2,
-        roughness: 0.1,
+        opacity: 0.15,
+        transmission: 0.95, // Glass transmission
+        thickness: 0.2,     // Glass thickness
+        roughness: 0.05,
         metalness: 0,
         clearcoat: 1.0,
         clearcoatRoughness: 0.1,
-        side: THREE.DoubleSide // Change to DoubleSide to see from inside and outside
+        envMap: cubeRenderTarget.texture,
+        envMapIntensity: 1.0,
+        ior: 1.5,           // Index of refraction (glass)
+        side: THREE.DoubleSide
     });
     const outerSphere = new THREE.Mesh(outerGeometry, outerMaterial);
     scene.add(outerSphere);
+    
+    // Add a subtle inner glow effect
+    const glowGeometry = new THREE.SphereGeometry(sphereRadius - 0.2, 32, 32);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xaaccff,
+        transparent: true,
+        opacity: 0.05,
+        side: THREE.BackSide
+    });
+    const glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
+    scene.add(glowSphere);
     
     // Create the physics for the outer sphere
     createOuterSphere();
