@@ -73,49 +73,6 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enabled = false; // Disable for actual gameplay
 
-// Initialize game
-initGame();
-
-// Event listeners
-window.addEventListener('resize', onWindowResize);
-startButton.addEventListener('click', startGame);
-
-function initGame() {
-    // Create the outer transparent sphere
-    createOuterSphere();
-    
-    // Create the maze within the sphere
-    createMazeLevel(currentLevel);
-    
-    // Create the ball
-    createBall();
-    
-    // Create the target
-    createTarget();
-    
-    // Window resize handler
-    onWindowResize();
-    
-    // Start animation
-    animate(0);
-}
-
-function createOuterSphere() {
-    const outerGeometry = new THREE.SphereGeometry(sphereRadius + 0.2, 32, 32);
-    const outerMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.2,
-        roughness: 0.1,
-        metalness: 0,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.1,
-        side: THREE.BackSide
-    });
-    const outerSphere = new THREE.Mesh(outerGeometry, outerMaterial);
-    scene.add(outerSphere);
-}
-
 function createMazeLevel(level) {
     // Remove existing maze if there is one
     if (mazeMesh) {
@@ -125,7 +82,13 @@ function createMazeLevel(level) {
     
     // Create a group for the maze paths
     const mazeGroup = new THREE.Group();
-    const mazeShape = new CANNON.CompoundShape();
+    
+    // Create the physics body for the maze
+    mazeBody = new CANNON.Body({
+        mass: 0, // Static body
+        material: trackMaterial,
+        type: CANNON.Body.STATIC
+    });
     
     // Different maze patterns based on level
     let mazePaths = [];
@@ -275,7 +238,6 @@ function createMazeLevel(level) {
     // Create the 3D geometry for the paths
     mazePaths.forEach(path => {
         let points = [];
-        let shapes = [];
         
         if (path.type === 'line') {
             // Create a straight path
@@ -300,15 +262,14 @@ function createMazeLevel(level) {
             // Calculate quaternion for rotation
             const quat = new CANNON.Quaternion();
             const up = new CANNON.Vec3(0, 1, 0);
-            const axis = new CANNON.Vec3();
             
             // First, rotate to point in the right direction on the xz plane
             const xzDirection = new CANNON.Vec3(direction.x, 0, direction.z).normalize();
             const angle = Math.atan2(xzDirection.z, xzDirection.x);
             quat.setFromAxisAngle(up, angle);
             
-            // Add to compound shape
-            mazeShape.addShape(trackShape, center, quat);
+            // Add shape directly to body
+            mazeBody.addShape(trackShape, center, quat);
             
         } else if (path.type === 'arc') {
             // Create a curved path
@@ -357,8 +318,8 @@ function createMazeLevel(level) {
                 const angle = Math.atan2(xzDirection.z, xzDirection.x);
                 quat.setFromAxisAngle(up, angle);
                 
-                // Add to compound shape
-                mazeShape.addShape(trackShape, center, quat);
+                // Add shape directly to body
+                mazeBody.addShape(trackShape, center, quat);
             }
         }
         
@@ -378,13 +339,7 @@ function createMazeLevel(level) {
     mazeMesh = mazeGroup;
     scene.add(mazeMesh);
     
-    // Create the physics body for the maze
-    mazeBody = new CANNON.Body({
-        mass: 0, // Static body
-        material: trackMaterial,
-        type: CANNON.Body.STATIC
-    });
-    mazeBody.addShape(mazeShape);
+    // Add the physics body to the world
     world.addBody(mazeBody);
 }
 
@@ -583,9 +538,41 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function animate(time) {
-    requestAnimationFrame(animate);
+// Initialize game
+function initGame() {
+    // Create the outer transparent sphere
+    const outerGeometry = new THREE.SphereGeometry(sphereRadius + 0.2, 32, 32);
+    const outerMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.2,
+        roughness: 0.1,
+        metalness: 0,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        side: THREE.BackSide
+    });
+    const outerSphere = new THREE.Mesh(outerGeometry, outerMaterial);
+    scene.add(outerSphere);
     
-    // Render the scene
-    renderer.render(scene, camera);
+    // Create the maze within the sphere
+    createMazeLevel(currentLevel);
+    
+    // Create the ball
+    createBall();
+    
+    // Create the target
+    createTarget();
+    
+    // Window resize handler
+    onWindowResize();
+    
+    // Start animation
+    requestAnimationFrame(updateGame);
 }
+
+initGame();
+
+// Event listeners
+window.addEventListener('resize', onWindowResize);
+startButton.addEventListener('click', startGame);
