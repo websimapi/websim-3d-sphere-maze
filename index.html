@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Sphere Maze</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            touch-action: none;
+        }
+        
+        #game-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-container {
+            position: absolute;
+            width: 100%;
+            pointer-events: none;
+            z-index: 10;
+            color: white;
+            text-align: center;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        
+        #start-button {
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            pointer-events: auto;
+            margin-top: 20px;
+        }
+        
+        #timer, #level-display {
+            margin: 10px;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #success-message {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 150, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 24px;
+        }
+        
+        #instructions {
+            max-width: 80%;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <div id="ui-container">
+        <div id="timer">Time: 0.0s</div>
+        <div id="level-display">Level: 1</div>
+        <div id="success-message">Success! Next level loading...</div>
+    </div>
+    
+    <div id="start-screen">
+        <h1>3D Sphere Maze</h1>
+        <div id="instructions">
+            <p>Tilt your device to guide the metal ball through the maze to the center target.</p>
+            <p>Don't let the ball fall off the tracks!</p>
+        </div>
+        <button id="start-button">Start Game</button>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+    </script>
+    <script type="module" src="script.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
