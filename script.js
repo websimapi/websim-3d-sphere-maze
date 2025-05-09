@@ -125,7 +125,7 @@ function createMazeLevel(level) {
     
     // Create a group for the maze paths
     const mazeGroup = new THREE.Group();
-    const mazeShape = new CANNON.Compound();
+    const mazeShape = new CANNON.CompoundShape();
     
     // Different maze patterns based on level
     let mazePaths = [];
@@ -589,4 +589,3 @@ function animate(time) {
     // Render the scene
     renderer.render(scene, camera);
 }
-
